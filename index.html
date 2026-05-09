@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>🏀 BASKETOUR</title>
+<title>🏀 HOOPS TROPHY</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -258,13 +258,13 @@ header{background:var(--dark2);border-bottom:2px solid var(--orange);padding:0 1
 .undo-item{display:flex;justify-content:space-between;align-items:center;padding:5px 10px;background:var(--dark3);border-radius:6px;font-size:11px;color:var(--light);}
 .undo-item:first-child{border-left:3px solid var(--yellow);}
 .undo-item-time{color:var(--gray);font-size:10px;}
-@media(max-width:480px){.form-row,.form-row-3{grid-template-columns:1fr;}.sb-score{font-size:48px;}.standings-table th:nth-child(n+6),.standings-table td:nth-child(n+6){display:none;}.to-circle-wrap{width:160px;height:160px;}.to-circle-svg{width:160px;height:160px;}.to-time-val{font-size:56px;}}
+@media(max-width:480px){.form-row,.form-row-3{grid-template-columns:1fr;}.sb-score{font-size:48px;}.standings-table th:nth-child(n+6),.standings-table td:nth-child(n+6){display:none;}.standings-table th:nth-child(9),.standings-table td:nth-child(9){display:table-cell;}.to-circle-wrap{width:160px;height:160px;}.to-circle-svg{width:160px;height:160px;}.to-time-val{font-size:56px;}}
 </style>
 </head>
 <body>
 
 <header>
-  <div class="logo">🏀 <span>BASKET</span>TOUR</div>
+  <div class="logo">🏀 <span>HOOPS</span> TROPHY</div>
   <div style="display:flex;gap:8px;align-items:center;">
     <div id="publicBadge" style="font-size:11px;color:var(--gray);display:flex;align-items:center;gap:4px;">👁 Lecture seule</div>
     <div id="syncBadge" style="font-size:10px;display:flex;align-items:center;gap:4px;color:var(--green);">🟢 Sync</div>
@@ -285,7 +285,7 @@ header{background:var(--dark2);border-bottom:2px solid var(--orange);padding:0 1
     <span style="font-size:20px;">👁</span>
     <div><div style="font-size:13px;font-weight:700;color:var(--blue);">Mode consultation</div><div style="font-size:12px;color:var(--gray);margin-top:1px;">Vous consultez les stats en temps réel. Seul l'administrateur peut effectuer des saisies.</div></div>
   </div>
-  <div id="tab-classement"><div class="section-title">🏆 Classement général</div><div class="card"><table class="standings-table"><thead><tr><th>#</th><th>Équipe</th><th class="stat-val">J</th><th class="stat-val">V</th><th class="stat-val">D</th><th class="stat-val">+/-</th><th class="stat-val">PTS</th><th>Forme</th></tr></thead><tbody id="standingsBody"></tbody></table></div></div>
+  <div id="tab-classement"><div class="section-title">🏆 Classement général</div><div class="card"><table class="standings-table"><thead><tr><th>#</th><th>Équipe</th><th class="stat-val">J</th><th class="stat-val">V</th><th class="stat-val">D</th><th class="stat-val">PM</th><th class="stat-val">PE</th><th class="stat-val">+/-</th><th class="stat-val">PTS</th><th>Forme</th></tr></thead><tbody id="standingsBody"></tbody></table></div></div>
   <div id="tab-matchs" class="hidden"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;"><div class="section-title" style="margin:0">🏀 Matchs</div><button class="btn btn-primary btn-sm hidden" id="btnAddMatch" onclick="openModal('addMatchModal')">+ Ajouter</button></div><div id="matchesList"></div></div>
   <div id="tab-feuilles" class="hidden"><div class="section-title">📊 Feuilles de match</div><div id="sheetsListTab"></div></div>
   <div id="tab-joueurs" class="hidden"><div class="section-title">👤 Joueurs</div><div class="search-wrap"><span class="search-icon">🔍</span><input class="search-bar" id="playerSearch" placeholder="Rechercher un joueur..." oninput="renderPlayers()"></div><div class="filter-row"><div class="filter-pill active" data-pos="ALL" onclick="setFilter(this)">Tous</div><div class="filter-pill" data-pos="PG" onclick="setFilter(this)">Meneur</div><div class="filter-pill" data-pos="SG" onclick="setFilter(this)">Arrière</div><div class="filter-pill" data-pos="SF" onclick="setFilter(this)">Ailier</div><div class="filter-pill" data-pos="PF" onclick="setFilter(this)">Ailier Fort</div><div class="filter-pill" data-pos="C" onclick="setFilter(this)">Pivot</div></div><div id="playersList"></div></div>
@@ -707,8 +707,8 @@ function closeModal(id){const el=document.getElementById(id);if(el)el.classList.
 // ============================================================
 // STANDINGS
 // ============================================================
-function computeStandings(){const s={};data.teams.forEach(t=>s[t]={name:t,j:0,v:0,d:0,pf:0,pa:0,form:[]});data.matches.filter(m=>m.status==='done').forEach(m=>{if(!s[m.home]||!s[m.away])return;const h=s[m.home],a=s[m.away];h.j++;a.j++;h.pf+=m.scoreHome;h.pa+=m.scoreAway;a.pf+=m.scoreAway;a.pa+=m.scoreHome;if(m.scoreHome>m.scoreAway){h.v++;a.d++;h.form.push('W');a.form.push('L');}else{a.v++;h.d++;a.form.push('W');h.form.push('L');}});return Object.values(s).sort((a,b)=>{const d=b.v*2-a.v*2;return d||((b.pf-b.pa)-(a.pf-a.pa));});}
-function renderStandings(){const body=document.getElementById('standingsBody');if(!body)return;const st=computeStandings();if(!data.teams.length){body.innerHTML='<tr><td colspan="8"><div class="empty"><div class="empty-icon">🏀</div><div>Ajoutez des équipes via Admin</div></div></td></tr>';return;}body.innerHTML=st.map((t,i)=>{const r=i+1,bc=r===1?'rank-1':r===2?'rank-2':r===3?'rank-3':'rank-other',d=t.pf-t.pa,ds=d>0?'+'+d:d,form=t.form.slice(-5).map(f=>'<div class="form-badge form-'+f.toLowerCase()+'">'+f+'</div>').join('');return '<tr><td><div class="rank-badge '+bc+'">'+r+'</div></td><td style="font-weight:600;color:var(--white)">'+t.name+'</td><td class="stat-val">'+t.j+'</td><td class="stat-val" style="color:var(--green)">'+t.v+'</td><td class="stat-val" style="color:var(--red)">'+t.d+'</td><td class="stat-val" style="color:'+(d>=0?'var(--green)':'var(--red)')+'">'+ds+'</td><td class="stat-val stat-pts">'+t.v*2+'</td><td><div class="form-badges">'+form+'</div></td></tr>';}).join('');}
+function computeStandings(){const s={};data.teams.forEach(t=>s[t]={name:t,j:0,v:0,d:0,pf:0,pa:0,pts:0,form:[]});data.matches.filter(m=>m.status==='done').forEach(m=>{if(!s[m.home]||!s[m.away])return;const h=s[m.home],a=s[m.away];const forfait=m.forfait||null;if(forfait==='home'){h.j++;a.j++;a.v++;h.d++;a.pts+=2;h.pts+=0;a.form.push('W');h.form.push('L');}else if(forfait==='away'){h.j++;a.j++;h.v++;a.d++;h.pts+=2;a.pts+=0;h.form.push('W');a.form.push('L');}else{h.j++;a.j++;h.pf+=m.scoreHome;h.pa+=m.scoreAway;a.pf+=m.scoreAway;a.pa+=m.scoreHome;if(m.scoreHome>m.scoreAway){h.v++;a.d++;h.pts+=2;a.pts+=1;h.form.push('W');a.form.push('L');}else{a.v++;h.d++;a.pts+=2;h.pts+=1;a.form.push('W');h.form.push('L');}}});return Object.values(s).sort((a,b)=>{const d=b.pts-a.pts;return d||((b.pf-b.pa)-(a.pf-a.pa));});}
+function renderStandings(){const body=document.getElementById('standingsBody');if(!body)return;const st=computeStandings();if(!data.teams.length){body.innerHTML='<tr><td colspan="10"><div class="empty"><div class="empty-icon">🏀</div><div>Ajoutez des équipes via Admin</div></div></td></tr>';return;}body.innerHTML=st.map((t,i)=>{const r=i+1,bc=r===1?'rank-1':r===2?'rank-2':r===3?'rank-3':'rank-other',d=t.pf-t.pa,ds=d>0?'+'+d:d,form=t.form.slice(-5).map(f=>'<div class="form-badge form-'+f.toLowerCase()+'">'+f+'</div>').join('');return '<tr><td><div class="rank-badge '+bc+'">'+r+'</div></td><td style="font-weight:600;color:var(--white)">'+t.name+'</td><td class="stat-val">'+t.j+'</td><td class="stat-val" style="color:var(--green)">'+t.v+'</td><td class="stat-val" style="color:var(--red)">'+t.d+'</td><td class="stat-val">'+t.pf+'</td><td class="stat-val">'+t.pa+'</td><td class="stat-val" style="color:'+(d>=0?'var(--green)':'var(--red)')+'">'+ds+'</td><td class="stat-val stat-pts">'+t.pts+'</td><td><div class="form-badges">'+form+'</div></td></tr>';}).join('');}
 
 // ============================================================
 // MATCHES
@@ -1173,7 +1173,7 @@ async function exportPlayerPDF(name){
   doc.setFillColor(255,92,0);
   doc.rect(0,0,W,28,'F');
   doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor(255,255,255);
-  doc.text('BASKETOUR',M,12);
+  doc.text('HOOPS TROPHY',M,12);
   doc.setFontSize(10);doc.setFont('helvetica','normal');
   doc.text('FICHE DE SCOUTING',M,20);
   doc.setFontSize(8);
@@ -1282,7 +1282,7 @@ async function exportPlayerPDF(name){
   // Footer
   doc.setFillColor(30,30,40);doc.rect(0,285,W,12,'F');
   doc.setTextColor(150,150,170);doc.setFontSize(7);doc.setFont('helvetica','normal');
-  doc.text('BASKETOUR · Fiche générée automatiquement',M,291);
+  doc.text('HOOPS TROPHY · Fiche générée automatiquement',M,291);
   doc.text('Confidentiel',W-M,291,{align:'right'});
 
   doc.save('Scouting_'+p.name.replace(/\s/g,'_')+'.pdf');
@@ -1306,7 +1306,7 @@ function exportSheetPDF(){
   // Header
   doc.setFillColor(255,92,0);doc.rect(0,0,W,24,'F');
   doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(255,255,255);
-  doc.text('BASKETOUR — FEUILLE DE MATCH',M,14);
+  doc.text('HOOPS TROPHY — FEUILLE DE MATCH',M,14);
   doc.setFontSize(8);doc.setFont('helvetica','normal');
   const ds=m.date?new Date(m.date).toLocaleDateString('fr-FR',{dateStyle:'long'}):'';
   doc.text(m.round+(ds?' · '+ds:''),W-M,14,{align:'right'});
@@ -1390,7 +1390,7 @@ function exportSheetPDF(){
   // Footer
   doc.setFillColor(30,30,40);doc.rect(0,285,W,12,'F');
   doc.setTextColor(150,150,170);doc.setFontSize(7);doc.setFont('helvetica','normal');
-  doc.text('BASKETOUR · Feuille de match officielle',M,291);
+  doc.text('HOOPS TROPHY · Feuille de match officielle',M,291);
 
   doc.save('Feuille_'+m.home+'_vs_'+m.away+'.pdf');
   showToast('✅ Feuille de match PDF exportée !');
