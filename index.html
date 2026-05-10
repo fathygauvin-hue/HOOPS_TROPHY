@@ -258,6 +258,24 @@ header{background:var(--dark2);border-bottom:2px solid var(--orange);padding:0 1
 .undo-item{display:flex;justify-content:space-between;align-items:center;padding:5px 10px;background:var(--dark3);border-radius:6px;font-size:11px;color:var(--light);}
 .undo-item:first-child{border-left:3px solid var(--yellow);}
 .undo-item-time{color:var(--gray);font-size:10px;}
+/* BRACKET */
+.bracket-wrap{overflow-x:auto;padding:10px 0;}
+.bracket{display:flex;gap:0;align-items:flex-start;min-width:900px;position:relative;}
+.bracket-round{display:flex;flex-direction:column;justify-content:space-around;min-width:210px;position:relative;}
+.bracket-round-title{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:2px;color:var(--gray);text-align:center;margin-bottom:12px;text-transform:uppercase;}
+.bracket-match{background:var(--dark2);border:1px solid var(--dark4);border-radius:10px;margin:6px 0;overflow:hidden;position:relative;}
+.bracket-match.highlight{border-color:var(--orange);box-shadow:0 0 12px rgba(255,92,0,.2);}
+.bracket-team-row{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid var(--dark4);gap:8px;}
+.bracket-team-row:last-child{border-bottom:none;}
+.bracket-team-row.winner{background:rgba(255,92,0,.08);}
+.bracket-team-name{font-size:13px;font-weight:600;color:var(--white);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bracket-team-name.tbd{color:var(--gray);font-style:italic;font-weight:400;}
+.bracket-team-score{font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--white);min-width:28px;text-align:center;}
+.bracket-team-score.winner-score{color:var(--orange);}
+.bracket-match-label{font-size:9px;color:var(--gray);text-align:center;padding:3px 8px;background:var(--dark3);text-transform:uppercase;letter-spacing:.5px;}
+.bracket-connector{width:30px;display:flex;flex-direction:column;justify-content:space-around;position:relative;}
+.bracket-select{background:var(--dark3);border:1px solid var(--dark4);border-radius:6px;padding:4px 6px;color:var(--white);font-size:11px;font-family:'DM Sans',sans-serif;flex:1;min-width:0;}
+.bracket-select:focus{border-color:var(--orange);outline:none;}
 @media(max-width:480px){.form-row,.form-row-3{grid-template-columns:1fr;}.sb-score{font-size:48px;}.standings-table th:nth-child(n+6),.standings-table td:nth-child(n+6){display:none;}.standings-table th:nth-child(9),.standings-table td:nth-child(9){display:table-cell;}.to-circle-wrap{width:160px;height:160px;}.to-circle-svg{width:160px;height:160px;}.to-time-val{font-size:56px;}}
 </style>
 </head>
@@ -275,6 +293,7 @@ header{background:var(--dark2);border-bottom:2px solid var(--orange);padding:0 1
 <nav class="nav-tabs">
   <div class="nav-tab active" onclick="showTab('classement',this)">🏆 Classement</div>
   <div class="nav-tab" onclick="showTab('matchs',this)">🏀 Matchs</div>
+  <div class="nav-tab" onclick="showTab('bracket',this)">🏆 Bracket</div>
   <div class="nav-tab" onclick="showTab('feuilles',this)">📊 Feuilles</div>
   <div class="nav-tab" onclick="showTab('joueurs',this)">👤 Joueurs</div>
   <div class="nav-tab" onclick="showTab('qr',this)">📱 QR Code</div>
@@ -288,6 +307,7 @@ header{background:var(--dark2);border-bottom:2px solid var(--orange);padding:0 1
   <div id="tab-classement"><div class="section-title">🏆 Classement général</div><div class="filter-row" id="poolFilterRow"></div><div id="standingsContainer"></div></div>
   <div id="tab-matchs" class="hidden"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;"><div class="section-title" style="margin:0">🏀 Matchs</div><button class="btn btn-primary btn-sm hidden" id="btnAddMatch" onclick="openModal('addMatchModal')">+ Ajouter</button></div><div id="matchesList"></div></div>
   <div id="tab-feuilles" class="hidden"><div class="section-title">📊 Feuilles de match</div><div id="sheetsListTab"></div></div>
+  <div id="tab-bracket" class="hidden"><div class="section-title">🏆 Phase finale</div><div class="bracket-wrap" id="bracketContainer"></div></div>
   <div id="tab-joueurs" class="hidden"><div class="section-title">👤 Joueurs</div><div class="search-wrap"><span class="search-icon">🔍</span><input class="search-bar" id="playerSearch" placeholder="Rechercher un joueur..." oninput="renderPlayers()"></div><div class="filter-row"><div class="filter-pill active" data-pos="ALL" onclick="setFilter(this)">Tous</div><div class="filter-pill" data-pos="PG" onclick="setFilter(this)">Meneur</div><div class="filter-pill" data-pos="SG" onclick="setFilter(this)">Arrière</div><div class="filter-pill" data-pos="SF" onclick="setFilter(this)">Ailier</div><div class="filter-pill" data-pos="PF" onclick="setFilter(this)">Ailier Fort</div><div class="filter-pill" data-pos="C" onclick="setFilter(this)">Pivot</div></div><div id="playersList"></div></div>
   <div id="tab-qr" class="hidden"><div class="qr-section"><div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:2px;color:var(--white);">📱 Accès Joueurs</div><p style="color:var(--gray);font-size:14px;max-width:380px;line-height:1.6;">Scannez ce QR code pour accéder au classement et aux résultats en temps réel.</p><div id="qrcode"></div><div class="qr-url" id="qrUrl"></div></div></div>
 </div>
@@ -515,7 +535,7 @@ function loadData(){
     fbRef.on('value',snap=>{
       const val=snap.val();
       if(val&&!isSyncing){
-        data={teams:val.teams||[],players:val.players||[],matches:val.matches||[],pools:val.pools||[],teamPools:val.teamPools||{}};
+        data={teams:val.teams||[],players:val.players||[],matches:val.matches||[],pools:val.pools||[],teamPools:val.teamPools||{},bracket:val.bracket||null};
         migratePlayers();
         localStorage.setItem('basketTournoi',JSON.stringify(data));
         // Re-render whatever tab is active
@@ -537,7 +557,7 @@ function saveData(){
   // Push to Firebase if admin
   if(firebaseReady&&fbRef&&isAdmin){
     isSyncing=true;
-    fbRef.set({teams:data.teams,players:data.players,matches:data.matches,pools:data.pools||[],teamPools:data.teamPools||{}})
+    fbRef.set({teams:data.teams,players:data.players,matches:data.matches,pools:data.pools||[],teamPools:data.teamPools||{},bracket:data.bracket||null})
       .then(()=>{isSyncing=false;})
       .catch(e=>{isSyncing=false;console.warn('Firebase save error',e);});
   }
@@ -703,7 +723,7 @@ function executeImport(){
 // ============================================================
 // TABS / MODALS
 // ============================================================
-function showTab(tab,el){document.querySelectorAll('[id^="tab-"]').forEach(e=>e.classList.add('hidden'));document.querySelectorAll('.nav-tab').forEach(e=>e.classList.remove('active'));document.getElementById('tab-'+tab).classList.remove('hidden');if(el)el.classList.add('active');if(tab==='classement')renderStandings();if(tab==='matchs')renderMatches();if(tab==='feuilles')renderSheets();if(tab==='joueurs')renderPlayers();if(tab==='qr')renderQR();}
+function showTab(tab,el){document.querySelectorAll('[id^="tab-"]').forEach(e=>e.classList.add('hidden'));document.querySelectorAll('.nav-tab').forEach(e=>e.classList.remove('active'));document.getElementById('tab-'+tab).classList.remove('hidden');if(el)el.classList.add('active');if(tab==='classement')renderStandings();if(tab==='matchs')renderMatches();if(tab==='bracket')renderBracket();if(tab==='feuilles')renderSheets();if(tab==='joueurs')renderPlayers();if(tab==='qr')renderQR();}
 function openModal(id){const el=document.getElementById(id);if(!el)return;el.classList.add('open');if(id==='addMatchModal')populateTeamSelects();}
 function closeModal(id){const el=document.getElementById(id);if(el)el.classList.remove('open');}
 
@@ -1461,6 +1481,170 @@ function exportSheetPDF(){
 // TOAST
 // ============================================================
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+
+// ============================================================
+// BRACKET — PHASE FINALE
+// ============================================================
+// Structure: 8 matches across 4 rounds
+// R1: M1 (3eA vs 4eB), M2 (3eB vs 4eA)
+// R2: M3 (Demi 1: 1eA vs 2eB), M4 (Demi 2: 1eB vs 2eA)
+// R3: M5 (7e/8e: Perd M1 vs Perd M2), M6 (5e/6e: Gagn M1 vs Gagn M2)
+// R4: M7 (Petite finale: Perd M3 vs Perd M4), M8 (Finale: Gagn M3 vs Gagn M4)
+
+function initBracket(){
+  if(!data.bracket){
+    data.bracket={
+      slots:{
+        M1:{home:'',away:'',label:'Match 1 · 3e/4e'},
+        M2:{home:'',away:'',label:'Match 2 · 3e/4e'},
+        M3:{home:'',away:'',label:'Demi-finale 1',feedHome:'M_MANUAL',feedAway:'M_MANUAL'},
+        M4:{home:'',away:'',label:'Demi-finale 2',feedHome:'M_MANUAL',feedAway:'M_MANUAL'},
+        M5:{home:'',away:'',label:'7e / 8e place',feedHome:'L_M1',feedAway:'L_M2'},
+        M6:{home:'',away:'',label:'5e / 6e place',feedHome:'W_M1',feedAway:'W_M2'},
+        M7:{home:'',away:'',label:'Petite finale',feedHome:'L_M3',feedAway:'L_M4'},
+        M8:{home:'',away:'',label:'FINALE 🏆',feedHome:'W_M3',feedAway:'W_M4'}
+      }
+    };
+  }
+}
+
+function getBracketMatch(slotId){
+  const slot=data.bracket.slots[slotId];
+  if(!slot)return null;
+  // Find linked match in data.matches
+  return data.matches.find(m=>m.bracketSlot===slotId)||null;
+}
+
+function getBracketTeam(feed){
+  if(!feed||feed==='M_MANUAL')return '';
+  const prefix=feed.substring(0,2); // W_ or L_
+  const sourceSlot=feed.substring(2); // M1, M2, etc
+  const m=data.matches.find(x=>x.bracketSlot===sourceSlot&&x.status==='done');
+  if(!m)return '';
+  if(prefix==='W_')return m.scoreHome>m.scoreAway?m.home:m.away;
+  if(prefix==='L_')return m.scoreHome>m.scoreAway?m.away:m.home;
+  return '';
+}
+
+function renderBracket(){
+  initBracket();
+  const el=document.getElementById('bracketContainer');
+  if(!el)return;
+  
+  const slots=data.bracket.slots;
+  const teamOpts='<option value="">— Choisir —</option>'+data.teams.map(t=>'<option value="'+t+'">'+t+'</option>').join('');
+  
+  function renderSlot(id){
+    const slot=slots[id];
+    const match=getBracketMatch(id);
+    const isDone=match&&match.status==='done';
+    const isLive=match&&match.status==='live';
+    
+    let homeTeam=slot.home;
+    let awayTeam=slot.away;
+    
+    // Auto-fill from feeds
+    if(slot.feedHome&&slot.feedHome!=='M_MANUAL'){
+      const auto=getBracketTeam(slot.feedHome);
+      if(auto)homeTeam=auto;
+    }
+    if(slot.feedAway&&slot.feedAway!=='M_MANUAL'){
+      const auto=getBracketTeam(slot.feedAway);
+      if(auto)awayTeam=auto;
+    }
+    
+    const homeScore=match?match.scoreHome:'';
+    const awayScore=match?match.scoreAway:'';
+    const homeWin=isDone&&homeScore>awayScore;
+    const awayWin=isDone&&awayScore>homeScore;
+    
+    let html='<div class="bracket-match'+(isLive?' highlight':'')+'">';
+    html+='<div class="bracket-match-label">'+slot.label+(isLive?' 🔴':'')+'</div>';
+    
+    // Home team row
+    html+='<div class="bracket-team-row'+(homeWin?' winner':'')+'">';
+    if(isAdmin&&!match){
+      html+='<select class="bracket-select" onchange="setBracketTeam(\''+id+'\',\'home\',this.value)">'+teamOpts.replace('value="'+homeTeam+'"','value="'+homeTeam+'" selected')+'</select>';
+    }else{
+      html+='<div class="bracket-team-name'+(homeTeam?'':' tbd')+'">'+(homeTeam||'À définir')+'</div>';
+    }
+    if(isDone||isLive)html+='<div class="bracket-team-score'+(homeWin?' winner-score':'')+'">'+homeScore+'</div>';
+    html+='</div>';
+    
+    // Away team row
+    html+='<div class="bracket-team-row'+(awayWin?' winner':'')+'">';
+    if(isAdmin&&!match){
+      html+='<select class="bracket-select" onchange="setBracketTeam(\''+id+'\',\'away\',this.value)">'+teamOpts.replace('value="'+awayTeam+'"','value="'+awayTeam+'" selected')+'</select>';
+    }else{
+      html+='<div class="bracket-team-name'+(awayTeam?'':' tbd')+'">'+(awayTeam||'À définir')+'</div>';
+    }
+    if(isDone||isLive)html+='<div class="bracket-team-score'+(awayWin?' winner-score':'')+'">'+awayScore+'</div>';
+    html+='</div>';
+    
+    // Admin: create match button
+    if(isAdmin&&homeTeam&&awayTeam&&!match){
+      html+='<div style="padding:6px 8px;text-align:center;"><button class="btn btn-primary btn-sm" style="width:100%;font-size:11px;" onclick="createBracketMatch(\''+id+'\')">Créer le match</button></div>';
+    }
+    
+    html+='</div>';
+    return html;
+  }
+  
+  // Build the bracket layout
+  el.innerHTML=`
+    <div class="bracket">
+      <div class="bracket-round" style="justify-content:center;gap:20px;">
+        <div class="bracket-round-title">Tour 1</div>
+        ${renderSlot('M1')}
+        ${renderSlot('M2')}
+      </div>
+      <div class="bracket-connector"><svg width="30" height="100%" style="min-height:200px;"><line x1="0" y1="25%" x2="30" y2="25%" stroke="var(--dark4)" stroke-width="2"/><line x1="0" y1="75%" x2="30" y2="75%" stroke="var(--dark4)" stroke-width="2"/></svg></div>
+      <div class="bracket-round" style="justify-content:center;gap:20px;">
+        <div class="bracket-round-title">Demi-finales</div>
+        ${renderSlot('M3')}
+        ${renderSlot('M4')}
+      </div>
+      <div class="bracket-connector"><svg width="30" height="100%" style="min-height:200px;"><line x1="0" y1="25%" x2="30" y2="25%" stroke="var(--dark4)" stroke-width="2"/><line x1="0" y1="75%" x2="30" y2="75%" stroke="var(--dark4)" stroke-width="2"/></svg></div>
+      <div class="bracket-round" style="justify-content:center;gap:20px;">
+        <div class="bracket-round-title">Finales</div>
+        ${renderSlot('M8')}
+        ${renderSlot('M7')}
+      </div>
+    </div>
+    <div style="margin-top:20px;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:2px;color:var(--gray);margin-bottom:10px;">Matchs de classement</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        ${renderSlot('M5')}
+        ${renderSlot('M6')}
+      </div>
+    </div>
+  `;
+}
+
+function setBracketTeam(slotId,side,team){
+  initBracket();
+  if(side==='home')data.bracket.slots[slotId].home=team;
+  else data.bracket.slots[slotId].away=team;
+  saveData();
+  renderBracket();
+}
+
+function createBracketMatch(slotId){
+  initBracket();
+  const slot=data.bracket.slots[slotId];
+  let home=slot.home,away=slot.away;
+  // Check auto-feeds
+  if(slot.feedHome&&slot.feedHome!=='M_MANUAL'){const auto=getBracketTeam(slot.feedHome);if(auto)home=auto;}
+  if(slot.feedAway&&slot.feedAway!=='M_MANUAL'){const auto=getBracketTeam(slot.feedAway);if(auto)away=auto;}
+  if(!home||!away){showToast('⚠ Équipes manquantes');return;}
+  // Check if match already exists
+  if(data.matches.find(m=>m.bracketSlot===slotId)){showToast('⚠ Match déjà créé');return;}
+  data.matches.push({id:Date.now(),home,away,round:slot.label,date:'',status:'upcoming',scoreHome:0,scoreAway:0,playerStats:{},liveState:null,bracketSlot:slotId});
+  saveData();
+  renderBracket();
+  renderMatches();
+  showToast('✓ '+slot.label+' créé : '+home+' vs '+away);
+}
 
 // ============================================================
 // INIT
