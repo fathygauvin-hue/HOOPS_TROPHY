@@ -285,7 +285,7 @@ header{background:var(--dark2);border-bottom:2px solid var(--orange);padding:0 1
     <span style="font-size:20px;">👁</span>
     <div><div style="font-size:13px;font-weight:700;color:var(--blue);">Mode consultation</div><div style="font-size:12px;color:var(--gray);margin-top:1px;">Vous consultez les stats en temps réel. Seul l'administrateur peut effectuer des saisies.</div></div>
   </div>
-  <div id="tab-classement"><div class="section-title">🏆 Classement général</div><div class="card"><table class="standings-table"><thead><tr><th>#</th><th>Équipe</th><th class="stat-val">J</th><th class="stat-val">V</th><th class="stat-val">D</th><th class="stat-val">PM</th><th class="stat-val">PE</th><th class="stat-val">+/-</th><th class="stat-val">PTS</th><th>Forme</th></tr></thead><tbody id="standingsBody"></tbody></table></div></div>
+  <div id="tab-classement"><div class="section-title">🏆 Classement général</div><div class="filter-row" id="poolFilterRow"></div><div id="standingsContainer"></div></div>
   <div id="tab-matchs" class="hidden"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;"><div class="section-title" style="margin:0">🏀 Matchs</div><button class="btn btn-primary btn-sm hidden" id="btnAddMatch" onclick="openModal('addMatchModal')">+ Ajouter</button></div><div id="matchesList"></div></div>
   <div id="tab-feuilles" class="hidden"><div class="section-title">📊 Feuilles de match</div><div id="sheetsListTab"></div></div>
   <div id="tab-joueurs" class="hidden"><div class="section-title">👤 Joueurs</div><div class="search-wrap"><span class="search-icon">🔍</span><input class="search-bar" id="playerSearch" placeholder="Rechercher un joueur..." oninput="renderPlayers()"></div><div class="filter-row"><div class="filter-pill active" data-pos="ALL" onclick="setFilter(this)">Tous</div><div class="filter-pill" data-pos="PG" onclick="setFilter(this)">Meneur</div><div class="filter-pill" data-pos="SG" onclick="setFilter(this)">Arrière</div><div class="filter-pill" data-pos="SF" onclick="setFilter(this)">Ailier</div><div class="filter-pill" data-pos="PF" onclick="setFilter(this)">Ailier Fort</div><div class="filter-pill" data-pos="C" onclick="setFilter(this)">Pivot</div></div><div id="playersList"></div></div>
@@ -515,7 +515,7 @@ function loadData(){
     fbRef.on('value',snap=>{
       const val=snap.val();
       if(val&&!isSyncing){
-        data={teams:val.teams||[],players:val.players||[],matches:val.matches||[]};
+        data={teams:val.teams||[],players:val.players||[],matches:val.matches||[],pools:val.pools||[],teamPools:val.teamPools||{}};
         migratePlayers();
         localStorage.setItem('basketTournoi',JSON.stringify(data));
         // Re-render whatever tab is active
@@ -537,13 +537,13 @@ function saveData(){
   // Push to Firebase if admin
   if(firebaseReady&&fbRef&&isAdmin){
     isSyncing=true;
-    fbRef.set({teams:data.teams,players:data.players,matches:data.matches})
+    fbRef.set({teams:data.teams,players:data.players,matches:data.matches,pools:data.pools||[],teamPools:data.teamPools||{}})
       .then(()=>{isSyncing=false;})
       .catch(e=>{isSyncing=false;console.warn('Firebase save error',e);});
   }
 }
 
-function migratePlayers(){data.players.forEach(p=>{if(!p.firstName){const parts=(p.name||'').split(' ');p.firstName=parts[0]||'';p.lastName=parts.slice(1).join(' ')||'';}if(!p.dob)p.dob='';if(!p.pos)p.pos='';if(!p.height)p.height='';if(!p.weight)p.weight='';if(!p.nationality)p.nationality='';if(!p.coaching)p.coaching={rating:0,niveau:'',posReco:'',strong:[],weak:[],note:''};if(!p.stats)p.stats={pts:0,reb:0,ast:0,foul:0,fg2a:0,fg2m:0,fg3a:0,fg3m:0,lfa:0,lfm:0};p.name=(p.firstName+' '+p.lastName).trim();});}
+function migratePlayers(){if(!data.pools)data.pools=[];if(!data.teamPools)data.teamPools={};data.players.forEach(p=>{if(!p.firstName){const parts=(p.name||'').split(' ');p.firstName=parts[0]||'';p.lastName=parts.slice(1).join(' ')||'';}if(!p.dob)p.dob='';if(!p.pos)p.pos='';if(!p.height)p.height='';if(!p.weight)p.weight='';if(!p.nationality)p.nationality='';if(!p.coaching)p.coaching={rating:0,niveau:'',posReco:'',strong:[],weak:[],note:''};if(!p.stats)p.stats={pts:0,reb:0,ast:0,foul:0,fg2a:0,fg2m:0,fg3a:0,fg3m:0,lfa:0,lfm:0};p.name=(p.firstName+' '+p.lastName).trim();});}
 
 // ============================================================
 // AUTH
@@ -559,8 +559,10 @@ function changePassword(){const p1=document.getElementById('newPwd1').value.trim
 // ============================================================
 // ADMIN PANEL
 // ============================================================
-function renderAdminModal(){const body=document.getElementById('adminBody');if(!body)return;let h='<div class="setup-section"><div class="section-title" style="font-size:15px;margin-bottom:10px">🏀 Équipes</div><div class="form-row"><input class="form-input" id="teamInput" placeholder="Nom de l\'équipe" onkeydown="if(event.key===\'Enter\')addTeam()"><button class="btn btn-primary" onclick="addTeam()">+ Ajouter</button></div></div>';data.teams.forEach((t,ti)=>{const pl=data.players.filter(p=>p.team===t);let ph='';pl.forEach(p=>{const pi=data.players.findIndex(x=>x.name===p.name);ph+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--dark2);border-radius:6px;margin-bottom:4px;"><div><span style="font-size:13px;font-weight:600;color:var(--white)">${p.name}</span> <span style="font-size:11px;color:var(--gray)">${p.pos||'—'}${p.height?' · '+p.height+'cm':''}</span></div><button class="btn btn-sm btn-red-soft" onclick="adminDeletePlayer(${pi})">🗑</button></div>`;});if(!pl.length)ph='<div style="font-size:12px;color:var(--gray);">Aucun joueur</div>';h+=`<div class="setup-section"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><div style="display:flex;align-items:center;gap:8px;"><span style="font-size:16px;font-weight:700;color:var(--white);">${t}</span><span style="background:var(--orange);color:#fff;border-radius:20px;padding:1px 9px;font-size:11px;font-weight:700;">${pl.length}</span></div><div style="display:flex;gap:6px;"><button class="btn btn-primary btn-sm" onclick="openAddPlayerSimple('${t}')">+ Joueurs</button><button class="btn btn-sm btn-red-soft" onclick="adminDeleteTeam(${ti})">🗑</button></div></div>${ph}</div>`;});if(!data.teams.length)h+='<div style="color:var(--gray);font-size:13px;padding:4px 0;">Aucune équipe.</div>';let mh=data.matches.length?[...data.matches].reverse().map(m=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:var(--dark3);border-radius:8px;margin-bottom:6px;"><div><div style="font-size:13px;font-weight:600;color:var(--white)">${m.home} vs ${m.away}</div><div style="font-size:11px;color:var(--gray)">${m.round}</div></div><button class="btn btn-sm btn-red-soft" onclick="adminDeleteMatch(${m.id})">🗑</button></div>`).join(''):'<div style="color:var(--gray);font-size:13px;">Aucun match</div>';h+=`<div class="setup-section" style="margin-top:4px;"><div class="section-title" style="font-size:15px;margin-bottom:10px">📋 Matchs</div><button class="btn btn-primary btn-sm" onclick="closeModal('adminModal');openModal('addMatchModal')">+ Match</button><div style="margin-top:12px;">${mh}</div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;"><button class="btn btn-ghost btn-sm" onclick="openChangePwd()">🔑 Mot de passe</button><button class="btn btn-ghost" onclick="closeModal('adminModal')">Fermer</button></div><div id="changePwdSection" style="display:none;margin-top:14px;background:var(--dark3);border-radius:10px;padding:14px;"><div class="form-row"><input class="form-input" type="password" id="newPwd1" placeholder="Nouveau"><input class="form-input" type="password" id="newPwd2" placeholder="Confirmer"></div><div id="pwdChangeMsg" style="font-size:12px;margin-top:6px;display:none;"></div><div style="display:flex;gap:8px;margin-top:8px;"><button class="btn btn-primary btn-sm" onclick="changePassword()">Valider</button><button class="btn btn-ghost btn-sm" onclick="document.getElementById('changePwdSection').style.display='none'">Annuler</button></div></div>`;body.innerHTML=h;}
-function addTeam(){const inp=document.getElementById('teamInput');if(!inp)return;const v=inp.value.trim();if(!v||data.teams.includes(v)){showToast('⚠ Nom invalide');return;}data.teams.push(v);saveData();inp.value='';renderAdminModal();}
+function renderAdminModal(){const body=document.getElementById('adminBody');if(!body)return;if(!data.pools)data.pools=[];let h='<div class="setup-section"><div class="section-title" style="font-size:15px;margin-bottom:10px">🏆 Poules</div><div class="form-row"><input class="form-input" id="poolInput" placeholder="Nom de la poule (ex: Poule A)" onkeydown="if(event.key===\'Enter\')addPool()"><button class="btn btn-primary" onclick="addPool()">+ Ajouter</button></div>';if(data.pools.length){h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">'+data.pools.map((p,i)=>'<div style="display:flex;align-items:center;gap:4px;background:var(--dark2);border:1px solid var(--orange);border-radius:20px;padding:4px 12px;"><span style="font-size:12px;font-weight:600;color:var(--orange);">'+p+'</span><span style="cursor:pointer;color:var(--gray);font-size:14px;" onclick="removePool('+i+')">✕</span></div>').join('')+'</div>';}h+='</div>';h+='<div class="setup-section"><div class="section-title" style="font-size:15px;margin-bottom:10px">🏀 Équipes</div><div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap;"><input class="form-input" id="teamInput" placeholder="Nom de l\'équipe" onkeydown="if(event.key===\'Enter\')addTeam()" style="flex:1;min-width:140px;">'+(data.pools.length?'<select class="form-select" id="teamPoolSelect" style="width:auto;min-width:120px;"><option value="">Sans poule</option>'+data.pools.map(p=>'<option value="'+p+'">'+p+'</option>').join('')+'</select>':'')+'<button class="btn btn-primary" onclick="addTeam()">+ Ajouter</button></div></div>';const teamsByPool={};data.teams.forEach(t=>{const pool=data.teamPools?.[t]||'';if(!teamsByPool[pool])teamsByPool[pool]=[];teamsByPool[pool].push(t);});const poolOrder=[...data.pools,''];poolOrder.forEach(pool=>{const teams=teamsByPool[pool]||[];if(!teams.length&&pool==='')return;const poolLabel=pool||'Sans poule';teams.forEach((t,ti2)=>{const ti=data.teams.indexOf(t);const pl=data.players.filter(p=>p.team===t);let ph='';pl.forEach(p=>{const pi=data.players.findIndex(x=>x.name===p.name);ph+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--dark2);border-radius:6px;margin-bottom:4px;"><div><span style="font-size:13px;font-weight:600;color:var(--white)">${p.name}</span> <span style="font-size:11px;color:var(--gray)">${p.pos||'—'}${p.height?' · '+p.height+'cm':''}</span></div><button class="btn btn-sm btn-red-soft" onclick="adminDeletePlayer(${pi})">🗑</button></div>`;});if(!pl.length)ph='<div style="font-size:12px;color:var(--gray);">Aucun joueur</div>';h+=`<div class="setup-section"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><div style="display:flex;align-items:center;gap:8px;"><span style="font-size:16px;font-weight:700;color:var(--white);">${t}</span><span style="background:var(--orange);color:#fff;border-radius:20px;padding:1px 9px;font-size:11px;font-weight:700;">${pl.length}</span>${pool?'<span style="font-size:10px;color:var(--blue);background:rgba(74,144,255,.15);border:1px solid rgba(74,144,255,.3);border-radius:12px;padding:2px 8px;">'+pool+'</span>':''}</div><div style="display:flex;gap:6px;"><button class="btn btn-primary btn-sm" onclick="openAddPlayerSimple('${t}')">+ Joueurs</button><button class="btn btn-sm btn-red-soft" onclick="adminDeleteTeam(${ti})">🗑</button></div></div>${ph}</div>`;});});if(!data.teams.length)h+='<div style="color:var(--gray);font-size:13px;padding:4px 0;">Aucune équipe.</div>';let mh=data.matches.length?[...data.matches].reverse().map(m=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:var(--dark3);border-radius:8px;margin-bottom:6px;"><div><div style="font-size:13px;font-weight:600;color:var(--white)">${m.home} vs ${m.away}</div><div style="font-size:11px;color:var(--gray)">${m.round}</div></div><button class="btn btn-sm btn-red-soft" onclick="adminDeleteMatch(${m.id})">🗑</button></div>`).join(''):'<div style="color:var(--gray);font-size:13px;">Aucun match</div>';h+=`<div class="setup-section" style="margin-top:4px;"><div class="section-title" style="font-size:15px;margin-bottom:10px">📋 Matchs</div><button class="btn btn-primary btn-sm" onclick="closeModal('adminModal');openModal('addMatchModal')">+ Match</button><div style="margin-top:12px;">${mh}</div></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px;"><button class="btn btn-ghost btn-sm" onclick="openChangePwd()">🔑 Mot de passe</button><button class="btn btn-ghost" onclick="closeModal('adminModal')">Fermer</button></div><div id="changePwdSection" style="display:none;margin-top:14px;background:var(--dark3);border-radius:10px;padding:14px;"><div class="form-row"><input class="form-input" type="password" id="newPwd1" placeholder="Nouveau"><input class="form-input" type="password" id="newPwd2" placeholder="Confirmer"></div><div id="pwdChangeMsg" style="font-size:12px;margin-top:6px;display:none;"></div><div style="display:flex;gap:8px;margin-top:8px;"><button class="btn btn-primary btn-sm" onclick="changePassword()">Valider</button><button class="btn btn-ghost btn-sm" onclick="document.getElementById('changePwdSection').style.display='none'">Annuler</button></div></div>`;body.innerHTML=h;}
+function addPool(){const inp=document.getElementById('poolInput');if(!inp)return;const v=inp.value.trim();if(!v){showToast('⚠ Nom requis');return;}if(!data.pools)data.pools=[];if(data.pools.includes(v)){showToast('⚠ Poule déjà existante');return;}data.pools.push(v);saveData();inp.value='';renderAdminModal();showToast('✓ '+v+' créée !');}
+function removePool(i){if(!confirm('Supprimer la poule ?'))return;const name=data.pools[i];data.pools.splice(i,1);if(data.teamPools){Object.keys(data.teamPools).forEach(t=>{if(data.teamPools[t]===name)data.teamPools[t]='';});}saveData();renderAdminModal();renderStandings();}
+function addTeam(){const inp=document.getElementById('teamInput');if(!inp)return;const v=inp.value.trim();if(!v||data.teams.includes(v)){showToast('⚠ Nom invalide');return;}data.teams.push(v);const poolSel=document.getElementById('teamPoolSelect');const pool=poolSel?poolSel.value:'';if(!data.teamPools)data.teamPools={};if(pool)data.teamPools[v]=pool;saveData();inp.value='';renderAdminModal();showToast('✓ '+v+' ajoutée !'+(pool?' ('+pool+')':''));}
 function adminDeleteTeam(i){if(!confirm('Supprimer l\'équipe et ses joueurs ?'))return;data.players=data.players.filter(p=>p.team!==data.teams[i]);data.teams.splice(i,1);saveData();renderAdminModal();renderPlayers();renderStandings();}
 function adminDeletePlayer(i){data.players.splice(i,1);saveData();renderAdminModal();renderPlayers();}
 function adminDeleteMatch(id){data.matches=data.matches.filter(x=>x.id!==id);saveData();renderAdminModal();renderMatches();renderStandings();}
@@ -707,8 +709,62 @@ function closeModal(id){const el=document.getElementById(id);if(el)el.classList.
 // ============================================================
 // STANDINGS
 // ============================================================
-function computeStandings(){const s={};data.teams.forEach(t=>s[t]={name:t,j:0,v:0,d:0,pf:0,pa:0,pts:0,form:[]});data.matches.filter(m=>m.status==='done').forEach(m=>{if(!s[m.home]||!s[m.away])return;const h=s[m.home],a=s[m.away];const forfait=m.forfait||null;if(forfait==='home'){h.j++;a.j++;a.v++;h.d++;a.pts+=2;h.pts+=0;a.form.push('W');h.form.push('L');}else if(forfait==='away'){h.j++;a.j++;h.v++;a.d++;h.pts+=2;a.pts+=0;h.form.push('W');a.form.push('L');}else{h.j++;a.j++;h.pf+=m.scoreHome;h.pa+=m.scoreAway;a.pf+=m.scoreAway;a.pa+=m.scoreHome;if(m.scoreHome>m.scoreAway){h.v++;a.d++;h.pts+=2;a.pts+=1;h.form.push('W');a.form.push('L');}else{a.v++;h.d++;a.pts+=2;h.pts+=1;a.form.push('W');h.form.push('L');}}});return Object.values(s).sort((a,b)=>{const d=b.pts-a.pts;return d||((b.pf-b.pa)-(a.pf-a.pa));});}
-function renderStandings(){const body=document.getElementById('standingsBody');if(!body)return;const st=computeStandings();if(!data.teams.length){body.innerHTML='<tr><td colspan="10"><div class="empty"><div class="empty-icon">🏀</div><div>Ajoutez des équipes via Admin</div></div></td></tr>';return;}body.innerHTML=st.map((t,i)=>{const r=i+1,bc=r===1?'rank-1':r===2?'rank-2':r===3?'rank-3':'rank-other',d=t.pf-t.pa,ds=d>0?'+'+d:d,form=t.form.slice(-5).map(f=>'<div class="form-badge form-'+f.toLowerCase()+'">'+f+'</div>').join('');return '<tr><td><div class="rank-badge '+bc+'">'+r+'</div></td><td style="font-weight:600;color:var(--white)">'+t.name+'</td><td class="stat-val">'+t.j+'</td><td class="stat-val" style="color:var(--green)">'+t.v+'</td><td class="stat-val" style="color:var(--red)">'+t.d+'</td><td class="stat-val">'+t.pf+'</td><td class="stat-val">'+t.pa+'</td><td class="stat-val" style="color:'+(d>=0?'var(--green)':'var(--red)')+'">'+ds+'</td><td class="stat-val stat-pts">'+t.pts+'</td><td><div class="form-badges">'+form+'</div></td></tr>';}).join('');}
+function computeStandings(poolFilter){const s={};const teams=poolFilter?data.teams.filter(t=>(data.teamPools||{})[t]===poolFilter):data.teams;teams.forEach(t=>s[t]={name:t,j:0,v:0,d:0,pf:0,pa:0,pts:0,form:[]});data.matches.filter(m=>m.status==='done').forEach(m=>{if(!s[m.home]||!s[m.away])return;const h=s[m.home],a=s[m.away];const forfait=m.forfait||null;if(forfait==='home'){h.j++;a.j++;a.v++;h.d++;a.pts+=2;h.pts+=0;a.form.push('W');h.form.push('L');}else if(forfait==='away'){h.j++;a.j++;h.v++;a.d++;h.pts+=2;a.pts+=0;h.form.push('W');a.form.push('L');}else{h.j++;a.j++;h.pf+=m.scoreHome;h.pa+=m.scoreAway;a.pf+=m.scoreAway;a.pa+=m.scoreHome;if(m.scoreHome>m.scoreAway){h.v++;a.d++;h.pts+=2;a.pts+=1;h.form.push('W');a.form.push('L');}else{a.v++;h.d++;a.pts+=2;h.pts+=1;a.form.push('W');h.form.push('L');}}});return Object.values(s).sort((a,b)=>{const d=b.pts-a.pts;return d||((b.pf-b.pa)-(a.pf-a.pa));});}
+
+let activePoolFilter='ALL';
+function setPoolFilter(el){activePoolFilter=el.dataset.pool;document.querySelectorAll('#poolFilterRow .filter-pill').forEach(p=>p.classList.remove('active'));el.classList.add('active');renderStandings();}
+
+function buildStandingsTable(standings,title){
+  if(!standings.length)return '';
+  let html=title?'<div style="font-family:Bebas Neue,sans-serif;font-size:17px;letter-spacing:2px;color:var(--orange);margin:14px 0 8px;display:flex;align-items:center;gap:8px;">'+title+'<div style="flex:1;height:1px;background:var(--dark4);"></div></div>':'';
+  html+='<div class="card"><table class="standings-table"><thead><tr><th>#</th><th>Équipe</th><th class="stat-val">J</th><th class="stat-val">V</th><th class="stat-val">D</th><th class="stat-val">PM</th><th class="stat-val">PE</th><th class="stat-val">+/-</th><th class="stat-val">PTS</th><th>Forme</th></tr></thead><tbody>';
+  html+=standings.map((t,i)=>{const r=i+1,bc=r===1?'rank-1':r===2?'rank-2':r===3?'rank-3':'rank-other',d=t.pf-t.pa,ds=d>0?'+'+d:d,form=t.form.slice(-5).map(f=>'<div class="form-badge form-'+f.toLowerCase()+'">'+f+'</div>').join('');return '<tr><td><div class="rank-badge '+bc+'">'+r+'</div></td><td style="font-weight:600;color:var(--white)">'+t.name+'</td><td class="stat-val">'+t.j+'</td><td class="stat-val" style="color:var(--green)">'+t.v+'</td><td class="stat-val" style="color:var(--red)">'+t.d+'</td><td class="stat-val">'+t.pf+'</td><td class="stat-val">'+t.pa+'</td><td class="stat-val" style="color:'+(d>=0?'var(--green)':'var(--red)')+'">'+ds+'</td><td class="stat-val stat-pts">'+t.pts+'</td><td><div class="form-badges">'+form+'</div></td></tr>';}).join('');
+  html+='</tbody></table></div>';
+  return html;
+}
+
+function renderStandings(){
+  const container=document.getElementById('standingsContainer');
+  const filterRow=document.getElementById('poolFilterRow');
+  if(!container)return;
+  
+  // Build pool filter pills
+  const pools=data.pools||[];
+  if(pools.length>0){
+    filterRow.innerHTML='<div class="filter-pill '+(activePoolFilter==='ALL'?'active':'')+'" data-pool="ALL" onclick="setPoolFilter(this)">Toutes</div>'+pools.map(p=>'<div class="filter-pill '+(activePoolFilter===p?'active':'')+'" data-pool="'+p+'" onclick="setPoolFilter(this)">'+p+'</div>').join('');
+    filterRow.style.display='flex';
+  }else{
+    filterRow.style.display='none';
+    activePoolFilter='ALL';
+  }
+  
+  if(!data.teams.length){container.innerHTML='<div class="card"><table class="standings-table"><tbody><tr><td colspan="10"><div class="empty"><div class="empty-icon">🏀</div><div>Ajoutez des équipes via Admin</div></div></td></tr></tbody></table></div>';return;}
+  
+  if(activePoolFilter!=='ALL'){
+    // Single pool view
+    const st=computeStandings(activePoolFilter);
+    container.innerHTML=buildStandingsTable(st,'');
+  }else if(pools.length>0){
+    // All pools — show each pool separately
+    let html='';
+    pools.forEach(pool=>{
+      const st=computeStandings(pool);
+      if(st.length)html+=buildStandingsTable(st,pool);
+    });
+    // Teams without a pool
+    const unassigned=data.teams.filter(t=>!data.teamPools?.[t]||!pools.includes(data.teamPools[t]));
+    if(unassigned.length){
+      const st=computeStandings(null);
+      const filtered=st.filter(t=>unassigned.includes(t.name));
+      if(filtered.length)html+=buildStandingsTable(filtered,'Sans poule');
+    }
+    container.innerHTML=html||'<div class="empty"><div class="empty-icon">🏀</div><div>Aucune équipe assignée</div></div>';
+  }else{
+    // No pools — classic view
+    const st=computeStandings(null);
+    container.innerHTML=buildStandingsTable(st,'');
+  }
+}
 
 // ============================================================
 // MATCHES
