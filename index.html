@@ -732,7 +732,7 @@ function renderStandings(){
   // Build pool filter pills
   const pools=data.pools||[];
   if(pools.length>0){
-    filterRow.innerHTML='<div class="filter-pill '+(activePoolFilter==='ALL'?'active':'')+'" data-pool="ALL" onclick="setPoolFilter(this)">Toutes</div>'+pools.map(p=>'<div class="filter-pill '+(activePoolFilter===p?'active':'')+'" data-pool="'+p+'" onclick="setPoolFilter(this)">'+p+'</div>').join('');
+    filterRow.innerHTML='<div class="filter-pill '+(activePoolFilter==='ALL'?'active':'')+'" data-pool="ALL" onclick="setPoolFilter(this)">Par poule</div><div class="filter-pill '+(activePoolFilter==='GENERAL'?'active':'')+'" data-pool="GENERAL" onclick="setPoolFilter(this)">Général</div>'+pools.map(p=>'<div class="filter-pill '+(activePoolFilter===p?'active':'')+'" data-pool="'+p+'" onclick="setPoolFilter(this)">'+p+'</div>').join('');
     filterRow.style.display='flex';
   }else{
     filterRow.style.display='none';
@@ -741,7 +741,11 @@ function renderStandings(){
   
   if(!data.teams.length){container.innerHTML='<div class="card"><table class="standings-table"><tbody><tr><td colspan="10"><div class="empty"><div class="empty-icon">🏀</div><div>Ajoutez des équipes via Admin</div></div></td></tr></tbody></table></div>';return;}
   
-  if(activePoolFilter!=='ALL'){
+  if(activePoolFilter==='GENERAL'){
+    // General ranking — all teams in one table
+    const st=computeStandings(null);
+    container.innerHTML=buildStandingsTable(st,'Classement général');
+  }else if(activePoolFilter!=='ALL'){
     // Single pool view
     const st=computeStandings(activePoolFilter);
     container.innerHTML=buildStandingsTable(st,'');
